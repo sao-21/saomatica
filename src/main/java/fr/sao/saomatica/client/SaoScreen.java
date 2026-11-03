@@ -155,14 +155,18 @@ public final class SaoScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.literal("↻"), b -> { status = "§7Liste rafraîchie"; clearAndInit(); }).dimensions(lx + lw - 20, ly + 40, 20, 18).build());
 
         int rx = x0 + 212, rw = W - 220;
-        addDrawableChild(ButtonWidget.builder(Text.literal("§aConstruire ici (sur moi)"), b -> {
-            if (selected != null) { cmd("saomatica import \"" + selected + "\""); close(); }
+        addDrawableChild(ButtonWidget.builder(Text.literal("§bPrévisualiser (blocs fantômes)"), b -> {
+            if (selected != null) { cmd("saomatica preview \"" + selected + "\""); close(); }
             else { status = "§cChoisis d'abord un modèle dans la liste"; }
         }).dimensions(rx, y0 + 50, rw, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("§aConstruire directement (sans aperçu)"), b -> {
+            if (selected != null) { cmd("saomatica import \"" + selected + "\""); close(); }
+            else { status = "§cChoisis d'abord un modèle dans la liste"; }
+        }).dimensions(rx, y0 + 72, rw, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Annuler la dernière construction"), b -> cmd("saomatica undo"))
-            .dimensions(rx, y0 + 72, rw, 18).build());
+            .dimensions(rx, y0 + 92, rw, 18).build());
 
-        pathField = new TextFieldWidget(textRenderer, rx, y0 + 124, rw, 18, Text.literal("Chemin"));
+        pathField = new TextFieldWidget(textRenderer, rx, y0 + 146, rw, 18, Text.literal("Chemin"));
         pathField.setMaxLength(1024);
         pathField.setPlaceholder(Text.literal("§7C:\\Users\\moi\\Downloads\\skull.obj"));
         pathField.setText(importPath);
@@ -173,11 +177,11 @@ public final class SaoScreen extends Screen {
             if (p.length() > 1 && p.startsWith("\"") && p.endsWith("\"")) p = p.substring(1, p.length() - 1);
             status = p.isEmpty() ? "§cColle d'abord le chemin du fichier" : importFile(Path.of(p));
             clearAndInit();
-        }).dimensions(rx, y0 + 144, rw, 18).build());
+        }).dimensions(rx, y0 + 166, rw, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Ouvrir le dossier des modèles"), b -> {
             try { Files.createDirectories(SaomaticaMod.modelsDir()); } catch (IOException ignored) { }
             Util.getOperatingSystem().open(SaomaticaMod.modelsDir().toFile());
-        }).dimensions(rx, y0 + 168, rw, 18).build());
+        }).dimensions(rx, y0 + 188, rw, 18).build());
     }
 
     // ── onglet 1 : voxel & couleurs ──
@@ -306,10 +310,10 @@ public final class SaoScreen extends Screen {
                     ctx.drawTextWithShadow(textRenderer, Text.literal("§7Glisse un .obj / .glb dans cette"), x0 + 12, y0 + 72, 0xFFFFFF);
                     ctx.drawTextWithShadow(textRenderer, Text.literal("§7fenêtre, ou colle son chemin →"), x0 + 12, y0 + 84, 0xFFFFFF);
                 }
-                ctx.drawTextWithShadow(textRenderer, Text.literal("§7Sélection : §f" + (selected == null ? "aucune" : trim(selected, 28))), rx, y0 + 96, 0xFFFFFF);
-                ctx.drawTextWithShadow(textRenderer, Text.literal("§eImporter un modèle depuis ton PC :"), rx, y0 + 110, 0xFFFFFF);
-                ctx.drawTextWithShadow(textRenderer, Text.literal("§7Ou glisse-dépose le fichier ici."), rx, y0 + 190, 0xFFFFFF);
-                ctx.drawTextWithShadow(textRenderer, Text.literal("§7(.mtl et textures copiés aussi)"), rx, y0 + 202, 0xFFFFFF);
+                ctx.drawTextWithShadow(textRenderer, Text.literal("§7Sélection : §f" + (selected == null ? "aucune" : trim(selected, 28))), rx, y0 + 116, 0xFFFFFF);
+                ctx.drawTextWithShadow(textRenderer, Text.literal("§eImporter un modèle depuis ton PC :"), rx, y0 + 132, 0xFFFFFF);
+                ctx.drawTextWithShadow(textRenderer, Text.literal("§7Ou glisse-dépose le fichier ici."), rx, y0 + 210, 0xFFFFFF);
+                ctx.drawTextWithShadow(textRenderer, Text.literal("§7(.mtl et textures copiés aussi)"), rx, y0 + 222, 0xFFFFFF);
             }
             case 1 -> {
                 ctx.drawTextWithShadow(textRenderer, Text.literal("§7Réglages envoyés au jeu à chaque clic."), x0 + 8, y0 + 182, 0xFFFFFF);

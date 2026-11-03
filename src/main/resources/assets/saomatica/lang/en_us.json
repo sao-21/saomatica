@@ -1,1 +1,13 @@
-{"key.saomatica.open":"Open SAOmatica menu","key.categories.saomatica":"SAOmatica"}
+{
+ "key.saomatica.open": "Ouvrir le menu SAOmatica",
+ "key.categories.saomatica": "SAOmatica",
+ "key.saomatica.confirm": "Aperçu : poser",
+ "key.saomatica.cancel": "Aperçu : annuler",
+ "key.saomatica.here": "Aperçu : sur moi",
+ "key.saomatica.xp": "Aperçu : X+",
+ "key.saomatica.xm": "Aperçu : X-",
+ "key.saomatica.zp": "Aperçu : Z+",
+ "key.saomatica.zm": "Aperçu : Z-",
+ "key.saomatica.yp": "Aperçu : monter",
+ "key.saomatica.ym": "Aperçu : descendre"
+}

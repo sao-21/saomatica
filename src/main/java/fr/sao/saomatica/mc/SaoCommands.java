@@ -1,6 +1,7 @@
 package fr.sao.saomatica.mc;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -82,6 +83,18 @@ public final class SaoCommands {
                             .executes(c -> doExport(c, "litematic"))
                             .then(CommandManager.literal("litematic").executes(c -> doExport(c, "litematic")))
                             .then(CommandManager.literal("schem").executes(c -> doExport(c, "schem")))))))
+            .then(CommandManager.literal("preview")
+                .then(CommandManager.argument("file", StringArgumentType.string()).suggests(MODELS)
+                    .executes(c -> doPreview(c, null))
+                    .then(CommandManager.argument("corner", BlockPosArgumentType.blockPos())
+                        .executes(c -> doPreview(c, BlockPosArgumentType.getBlockPos(c, "corner"))))))
+            .then(CommandManager.literal("move")
+                .then(CommandManager.argument("dx", IntegerArgumentType.integer())
+                    .then(CommandManager.argument("dy", IntegerArgumentType.integer())
+                        .then(CommandManager.argument("dz", IntegerArgumentType.integer()).executes(c -> movePreview(c))))))
+            .then(CommandManager.literal("here").executes(c -> hereP(c)))
+            .then(CommandManager.literal("confirm").executes(c -> confirm(c)))
+            .then(CommandManager.literal("cancel").executes(c -> cancelPreview(c)))
             .then(CommandManager.literal("undo").executes(c -> undo(c))));
     }
 
@@ -234,6 +247,101 @@ public final class SaoCommands {
         }, WORKER).whenComplete((v, err) -> src.getServer().execute(() -> {
             if (err != null) src.sendError(Text.literal("Échec de l'export : " + err.getMessage()));
             else ok(src, "Exporté : " + out);
+        }));
+        return 1;
+    }
+
+    // ── aperçu fantôme ──────────────────────────────────────────────────────
+    private static final class Pending {
+        final BlockGrid grid;
+        BlockPos origin;
+        Pending(BlockGrid g, BlockPos o) { grid = g; origin = o; }
+    }
+
+    private static final Map<UUID, Pending> PENDING = new ConcurrentHashMap<>();
+
+    private static int doPreview(CommandContext<ServerCommandSource> c, BlockPos corner) {
+        ServerCommandSource src = c.getSource();
+        net.minecraft.server.network.ServerPlayerEntity player = src.getPlayer();
+        if (player == null) { src.sendError(Text.literal("Commande réservée aux joueurs.")); return 0; }
+        String name = StringArgumentType.getString(c, "file");
+        Path dir = SaomaticaMod.modelsDir().toAbsolutePath().normalize();
+        Path file = dir.resolve(name).normalize();
+        if (!file.startsWith(dir) || !Files.isRegularFile(file)) {
+            src.sendError(Text.literal("Modèle introuvable dans " + dir + " : " + name));
+            return 0;
+        }
+        Options opt = optionsOf(src).copy();
+        MinecraftServer server = src.getServer();
+        Vec3d at = src.getPosition();
+        UUID who = who(src);
+        info(src, "Préparation de l'aperçu de " + name + "…");
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return Converter.convert(file, opt, BlockStates::exists, null);
+            } catch (IOException | RuntimeException e) {
+                throw new RuntimeException(e.getMessage() != null ? e.getMessage() : e.toString(), e);
+            }
+        }, WORKER).whenComplete((grid, err) -> server.execute(() -> {
+            if (err != null) {
+                Throwable t = err.getCause() != null ? err.getCause() : err;
+                SaomaticaMod.LOG.error("Échec de l'aperçu", err);
+                src.sendError(Text.literal("Échec : " + t.getMessage()));
+                return;
+            }
+            BlockPos origin = corner != null ? corner
+                : new BlockPos((int) Math.floor(at.x) - grid.sx / 2, (int) Math.floor(at.y), (int) Math.floor(at.z) - grid.sz / 2);
+            PENDING.put(who, new Pending(grid, origin));
+            try {
+                PreviewNet.send(player, grid, origin);
+            } catch (IOException e) {
+                src.sendError(Text.literal("Échec d'envoi de l'aperçu : " + e.getMessage()));
+                return;
+            }
+            ok(src, "Aperçu : " + grid.sx + "x" + grid.sy + "x" + grid.sz + ", " + grid.solidBlocks + " blocs. Entrée = poser, Retour arrière = annuler, flèches = déplacer.");
+        }));
+        return 1;
+    }
+
+    private static int movePreview(CommandContext<ServerCommandSource> c) {
+        ServerCommandSource src = c.getSource();
+        Pending p = PENDING.get(who(src));
+        if (p == null || src.getPlayer() == null) { src.sendError(Text.literal("Aucun aperçu en cours.")); return 0; }
+        p.origin = p.origin.add(IntegerArgumentType.getInteger(c, "dx"), IntegerArgumentType.getInteger(c, "dy"), IntegerArgumentType.getInteger(c, "dz"));
+        PreviewNet.sendOrigin(src.getPlayer(), p.origin);
+        return 1;
+    }
+
+    private static int hereP(CommandContext<ServerCommandSource> c) {
+        ServerCommandSource src = c.getSource();
+        Pending p = PENDING.get(who(src));
+        if (p == null || src.getPlayer() == null) { src.sendError(Text.literal("Aucun aperçu en cours.")); return 0; }
+        Vec3d at = src.getPosition();
+        p.origin = new BlockPos((int) Math.floor(at.x) - p.grid.sx / 2, (int) Math.floor(at.y), (int) Math.floor(at.z) - p.grid.sz / 2);
+        PreviewNet.sendOrigin(src.getPlayer(), p.origin);
+        return 1;
+    }
+
+    private static int cancelPreview(CommandContext<ServerCommandSource> c) {
+        ServerCommandSource src = c.getSource();
+        PENDING.remove(who(src));
+        if (src.getPlayer() != null) PreviewNet.sendClear(src.getPlayer());
+        info(src, "Aperçu annulé.");
+        return 1;
+    }
+
+    private static int confirm(CommandContext<ServerCommandSource> c) {
+        ServerCommandSource src = c.getSource();
+        UUID who = who(src);
+        Pending p = PENDING.remove(who);
+        if (p == null) { src.sendError(Text.literal("Aucun aperçu à poser.")); return 0; }
+        if (src.getPlayer() != null) PreviewNet.sendClear(src.getPlayer());
+        ServerWorld world = src.getWorld();
+        BuildScheduler.Undo undo = BuildScheduler.newUndo(world);
+        info(src, "Placement en cours…");
+        BuildScheduler.add(BuildScheduler.place(world, p.grid, p.origin, undo, () -> {
+            UNDO.put(who, undo);
+            ok(src, "Terminé : " + undo.size() + " blocs posés en " + p.origin.toShortString() + ". /saomatica undo pour annuler.");
         }));
         return 1;
     }

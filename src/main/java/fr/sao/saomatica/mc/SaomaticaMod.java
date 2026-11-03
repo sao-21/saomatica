@@ -25,6 +25,7 @@ public final class SaomaticaMod implements ModInitializer {
             LOG.error("Impossible de créer les dossiers SAOmatica", e);
         }
         BuildScheduler.init();
+        PreviewNet.register();
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> SaoCommands.register(dispatcher));
         LOG.info("SAOmatica prêt. Modèles : {}", modelsDir());
     }
