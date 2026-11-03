@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "saomatica",
+  "version": "${version}",
+  "name": "SAOmatica",
+  "description": "Convertit des modèles 3D (.obj / .glb) en constructions Minecraft avec dalles, escaliers et murs placés selon les normales de surface. Exporte aussi une zone du monde en .litematic / .schem.",
+  "authors": ["Sao"],
+  "license": "BSD-3-Clause",
+  "icon": "assets/saomatica/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["fr.sao.saomatica.mc.SaomaticaMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
