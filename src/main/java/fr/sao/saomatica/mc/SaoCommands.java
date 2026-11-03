@@ -93,6 +93,11 @@ public final class SaoCommands {
                     .then(CommandManager.argument("dy", IntegerArgumentType.integer())
                         .then(CommandManager.argument("dz", IntegerArgumentType.integer()).executes(c -> movePreview(c))))))
             .then(CommandManager.literal("here").executes(c -> hereP(c)))
+            .then(CommandManager.literal("aim").executes(c -> aimP(c)))
+            .then(CommandManager.literal("rotate").executes(c -> transformP(c, 'r')))
+            .then(CommandManager.literal("mirror")
+                .then(CommandManager.literal("x").executes(c -> transformP(c, 'x')))
+                .then(CommandManager.literal("z").executes(c -> transformP(c, 'z'))))
             .then(CommandManager.literal("confirm").executes(c -> confirm(c)))
             .then(CommandManager.literal("cancel").executes(c -> cancelPreview(c)))
             .then(CommandManager.literal("undo").executes(c -> undo(c))));
@@ -253,7 +258,7 @@ public final class SaoCommands {
 
     // ── aperçu fantôme ──────────────────────────────────────────────────────
     private static final class Pending {
-        final BlockGrid grid;
+        BlockGrid grid;
         BlockPos origin;
         Pending(BlockGrid g, BlockPos o) { grid = g; origin = o; }
     }
@@ -319,6 +324,39 @@ public final class SaoCommands {
         Vec3d at = src.getPosition();
         p.origin = new BlockPos((int) Math.floor(at.x) - p.grid.sx / 2, (int) Math.floor(at.y), (int) Math.floor(at.z) - p.grid.sz / 2);
         PreviewNet.sendOrigin(src.getPlayer(), p.origin);
+        return 1;
+    }
+
+    private static int aimP(CommandContext<ServerCommandSource> c) {
+        ServerCommandSource src = c.getSource();
+        Pending p = PENDING.get(who(src));
+        net.minecraft.server.network.ServerPlayerEntity pl = src.getPlayer();
+        if (p == null || pl == null) { src.sendError(Text.literal("Aucun aperçu en cours.")); return 0; }
+        net.minecraft.util.hit.HitResult hit = pl.raycast(200, 0f, false);
+        if (hit.getType() != net.minecraft.util.hit.HitResult.Type.BLOCK) { src.sendError(Text.literal("Aucun bloc visé.")); return 0; }
+        BlockPos b = ((net.minecraft.util.hit.BlockHitResult) hit).getBlockPos().up();
+        p.origin = new BlockPos(b.getX() - p.grid.sx / 2, b.getY(), b.getZ() - p.grid.sz / 2);
+        PreviewNet.sendOrigin(pl, p.origin);
+        return 1;
+    }
+
+    private static int transformP(CommandContext<ServerCommandSource> c, char what) {
+        ServerCommandSource src = c.getSource();
+        Pending p = PENDING.get(who(src));
+        net.minecraft.server.network.ServerPlayerEntity pl = src.getPlayer();
+        if (p == null || pl == null) { src.sendError(Text.literal("Aucun aperçu en cours.")); return 0; }
+        BlockGrid old = p.grid;
+        BlockGrid ng = what == 'r' ? fr.sao.saomatica.core.GridTransform.rotate90(old) : fr.sao.saomatica.core.GridTransform.mirror(old, what);
+        // garde le centre en place
+        int cx = p.origin.getX() + old.sx / 2, cz = p.origin.getZ() + old.sz / 2;
+        p.grid = ng;
+        p.origin = new BlockPos(cx - ng.sx / 2, p.origin.getY(), cz - ng.sz / 2);
+        try {
+            PreviewNet.send(pl, ng, p.origin);
+        } catch (IOException e) {
+            src.sendError(Text.literal("Échec d'envoi : " + e.getMessage()));
+            return 0;
+        }
         return 1;
     }
 

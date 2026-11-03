@@ -17,7 +17,7 @@ import net.minecraft.util.math.BlockPos;
 import org.lwjgl.glfw.GLFW;
 
 public final class SaomaticaClient implements ClientModInitializer {
-    private static KeyBinding openKey, confirmKey, cancelKey, hereKey, xp, xm, zp, zm, yp, ym;
+    private static KeyBinding openKey, confirmKey, cancelKey, hereKey, aimKey, rotKey, mirXKey, mirZKey, xp, xm, zp, zm, yp, ym;
 
     private static KeyBinding key(String id, int code) {
         return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.saomatica." + id, InputUtil.Type.KEYSYM, code, "key.categories.saomatica"));
@@ -29,6 +29,10 @@ public final class SaomaticaClient implements ClientModInitializer {
         confirmKey = key("confirm", GLFW.GLFW_KEY_ENTER);
         cancelKey = key("cancel", GLFW.GLFW_KEY_BACKSPACE);
         hereKey = key("here", GLFW.GLFW_KEY_H);
+        aimKey = key("aim", GLFW.GLFW_KEY_G);
+        rotKey = key("rotate", GLFW.GLFW_KEY_R);
+        mirXKey = key("mirx", GLFW.GLFW_KEY_X);
+        mirZKey = key("mirz", GLFW.GLFW_KEY_Z);
         xp = key("xp", GLFW.GLFW_KEY_RIGHT);
         xm = key("xm", GLFW.GLFW_KEY_LEFT);
         zp = key("zp", GLFW.GLFW_KEY_DOWN);
@@ -50,7 +54,8 @@ public final class SaomaticaClient implements ClientModInitializer {
             MinecraftClient mc = MinecraftClient.getInstance();
             int cx = mc.getWindow().getScaledWidth() / 2;
             g.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("§bAperçu SAOmatica §7" + Ghost.info()), cx, 8, 0xFFFFFF);
-            g.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("§aEntrée§7 = poser   §cRetour arrière§7 = annuler   §eH§7 = sur moi   §f←↑↓→ PgUp PgDn§7 = déplacer (Maj = x10)"), cx, 20, 0xFFFFFF);
+            g.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("§aEntrée§7 = poser   §cRetour arrière§7 = annuler   §eH§7 = sur moi   §eG§7 = sur le viseur   §f←↑↓→ PgUp PgDn§7 = déplacer (Maj = x10)"), cx, 20, 0xFFFFFF);
+            g.drawCenteredTextWithShadow(mc.textRenderer, Text.literal("§dR§7 = tourner 90°   §dX§7 / §dZ§7 = miroir"), cx, 32, 0xFFFFFF);
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -62,6 +67,10 @@ public final class SaomaticaClient implements ClientModInitializer {
             while (confirmKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica confirm");
             while (cancelKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica cancel");
             while (hereKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica here");
+            while (aimKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica aim");
+            while (rotKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica rotate");
+            while (mirXKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica mirror x");
+            while (mirZKey.wasPressed()) client.player.networkHandler.sendChatCommand("saomatica mirror z");
             while (xp.wasPressed()) move(client, step, 0, 0);
             while (xm.wasPressed()) move(client, -step, 0, 0);
             while (zp.wasPressed()) move(client, 0, 0, step);

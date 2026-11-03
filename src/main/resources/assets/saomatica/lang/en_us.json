@@ -9,5 +9,9 @@
  "key.saomatica.zp": "Aperçu : Z+",
  "key.saomatica.zm": "Aperçu : Z-",
  "key.saomatica.yp": "Aperçu : monter",
- "key.saomatica.ym": "Aperçu : descendre"
+ "key.saomatica.ym": "Aperçu : descendre",
+ "key.saomatica.aim": "Aperçu : sur le viseur",
+ "key.saomatica.rotate": "Aperçu : tourner 90°",
+ "key.saomatica.mirx": "Aperçu : miroir X",
+ "key.saomatica.mirz": "Aperçu : miroir Z"
 }
