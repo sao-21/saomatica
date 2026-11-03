@@ -104,7 +104,7 @@ public final class SaoScreen extends Screen {
     }
 
     @Override
-    public void onFilesDropped(List<Path> paths) {
+    public void filesDragged(List<Path> paths) {
         String last = "";
         for (Path p : paths) last = importFile(p);
         status = last;
